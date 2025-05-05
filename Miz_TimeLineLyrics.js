@@ -1,6 +1,6 @@
 //=============================================================================
 // Plugin Name: Miz_TimeLineLyrics
-// Version: 1.0
+// Version: 1.1
 // Author: MixLand1001
 //=============================================================================
 
@@ -15,6 +15,10 @@
  * @param Offest
  * @desc 歌词的偏移数值
  * @default 0
+ *
+ * @param Line Separator
+ * @desc LRC文件中用于分隔两个语言字幕的字符
+ * @default //
  *
  * @param Font Size
  * @desc 歌词字体大小
@@ -48,6 +52,7 @@
  * showLyrics [文件名] - 显示指定的歌词文件。如果省略文件名，则使用插件参数中设置的文件。
  * 歌词需要是lrc文件的格式，名字需要带上文件后缀。
  * hideLyrics - 隐藏显示的歌词。
+ * 如何显示双语字幕：在lrc文件中，在歌词后添加分隔符（默认是'//'）
  *
  * 请注意，需要播放BGM才能显示歌词，可以提前使用指令来提前加载歌词。
  */
@@ -63,12 +68,15 @@
     var outlineWidth = Number(parameters['Outline Width'] || 2);
     var xPosition = parameters['X Position'] || '50%';
     var yPosition = parameters['Y Position'] || '80%';
+    var lineSeparator = parameters['Line Separator'] || '//';
 
     var _lyricsData = []; //歌词数据
+    var _subLyricsData = [];
     var _currentLyricIndex = -1; //定位目前歌词位置
     var _showingLyrics = false; //是否显示歌词
     var _lyricsSprite = null;   //歌词Sprite
     var lyricBGM = {};
+    var _lyricsLoaded = false;
 
     // 解析lrc中的时间戳
     function parseTimestamp(timestamp) {
@@ -107,13 +115,17 @@
     function parseLyricsText(text) {
         var lines = text.split('\n');
         var lyrics = [];
+        var separatorRegex = new RegExp('\\s*\\' + lineSeparator + '\\s*');
+
         for (var i = 0; i < lines.length; i++) {
             var line = lines[i].trim();
             if (line) {
                 var timestamp = parseTimestamp(line);
                 if (timestamp !== -1) {
                     var lyricText = line.substring(line.indexOf(']') + 1).trim();
-                    lyrics.push({ time: timestamp, text: lyricText });
+                    var textParts = lyricText.split(separatorRegex, 2); 
+                    lyrics.push({ time: timestamp, text: textParts[0].trim() });
+                    _subLyricsData.push({text:textParts.length>1? textParts[1].trim() : ""});
                 }
             }
         }
@@ -170,8 +182,13 @@
         if (newLyricIndex !== _currentLyricIndex) {
             _currentLyricIndex = newLyricIndex;
             _lyricsSprite.bitmap.clear();
+
             if (_currentLyricIndex >= 0 && _currentLyricIndex < _lyricsData.length) {
-                _lyricsSprite.bitmap.drawText(_lyricsData[_currentLyricIndex].text, _lyricsSprite.x,_lyricsSprite.y, Graphics.width, fontSize);
+                var width = _lyricsSprite.bitmap.measureTextWidth(_lyricsData[_currentLyricIndex].text);
+                _lyricsSprite.bitmap.drawText(_lyricsData[_currentLyricIndex].text, _lyricsSprite.x - width / 2,_lyricsSprite.y, Graphics.width, fontSize);
+                if(_subLyricsData && _subLyricsData[_currentLyricIndex]){
+                    _lyricsSprite.bitmap.drawText(_subLyricsData[_currentLyricIndex].text, _lyricsSprite.x - width / 2,_lyricsSprite.y+ fontSize, Graphics.width, fontSize);
+                }
             }
         }
     }
