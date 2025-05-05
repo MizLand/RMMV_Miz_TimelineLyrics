@@ -233,6 +233,7 @@
         }
     };
 
+    // 精灵持久化
     var _Scene_Map_CreateDisplayObjects = Scene_Map.prototype.createDisplayObjects;
     Scene_Map.prototype.createDisplayObjects = function() {
         _Scene_Map_CreateDisplayObjects.call(this);
